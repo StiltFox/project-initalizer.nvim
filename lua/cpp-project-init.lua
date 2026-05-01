@@ -2,15 +2,6 @@ local lfs = require("lfs")
 
 local M = {}
 
--- step 1: Ask the user for the project name
--- Step 2: create empty LICENSE and README.MD
--- Step 3: create .gitignore with common excluded folders
--- Step 4: create src, main, and test directories
--- Step 5: ask user if program is a library or executable
--- Step 6: create default cmake files
--- Step 7: build project
--- Step 8: link compile json to project root
-
 function M.write_file(name, content)
   local output = false
   local file = io.open(name, "w")
@@ -33,7 +24,7 @@ function M.create_gitignore(project_name)
 build
 cmake-build-*
 compile_commands.json
-    ]]
+]]
     return M.write_file(project_name .. "/.gitignore", gitignore_list)
 end
 
@@ -61,7 +52,7 @@ ColumnLimit: 120
 IndentAccessModifiers: false
 IndentExternBlock: Indent
 NamespaceIndentation: All
-    ]]
+]]
 
     return M.write_file(project_name .. "/.clang-format", format_options)
 end
@@ -79,15 +70,15 @@ enable_testing()
 find_package(PkgConfig REQUIRED)
 
 add_subdirectory(src)
-    ]]
+]]
 
     M.write_file(project_name .. "/CMakeLists.txt", main_cmake_content)
     M.write_file(project_name .. "/src/CMakeLists.txt", [[
 add_subdirectory(main)
 add_subdirectory(test)
-    ]])
-    M.write_file(project_name .. "/src/main", "add_executable("project_name .. " application.c++)")
-    M.write_file(project_name .. "/src/test", "# tests here")
+]])
+    M.write_file(project_name .. "/src/main/CMakeLists.txt", "add_executable(" .. project_name .. " application.c++)")
+    M.write_file(project_name .. "/src/test/CMakeLists.txt", "# tests here")
 end
 
 function M.create_directory_structure(project_name)
@@ -115,9 +106,28 @@ int main ()
     std::cout << "hello world\n";
     return 0;
 }
-            ]])
+]])
+            vim.fn.system("cmake -S " .. project_name .. " -B " .. project_name .. "/build")
+            vim.fn.system("cmake --build " .. project_name .. "/build")
+            vim.fn.system("ln -s " .. project_name .. "/build/compile_commands.json " .. project_name ..
+                "/compile_commands.json")
         else
             print("No name provided, project not created.")
+        end
+    end)
+end
+
+function M.create_nvim_plugin_project()
+    vim.ui.input({prompt = "Enter project name (no spaces):"}, function(project_name)
+        if project_name then
+            lfs.mkdir(project_name .. ".nvim")
+            lfs.mkdir(project_name .. ".nvim/lua")
+            M.create_gitignore(project_name .. ".nvim")
+            M.write_file(project_name .. ".nvim/LICENSE", "Please put your license information here!")
+            M.write_file(project_name .. ".nvim/README.md", "# " .. project_name .. "\n\nDocument your project here!")
+            M.write_file(project_name .. ".nvim/lua/" .. project_name .. ".lua", "-- your code here")
+        else
+            print("No name provided, project not created")
         end
     end)
 end
@@ -125,6 +135,7 @@ end
 function M.setup(opts)
     opts = opts or {}
     vim.api.nvim_create_user_command("CreateCmakeProject", M.create_cpp_project, {})
+    vim.api.nvim_create_user_command("CreateNvimPluginProject", M.create_nvim_plugin_project, {})
 end
 
 return M
